@@ -3,6 +3,7 @@ from artifactory_cleanup.rules import (
     ArtifactsList,
     KeepLatestNFilesInFolder,
     KeepLatestVersionNFilesInFolder,
+    KeepFoldersContainingFile,
 )
 from tests.utils import makeas
 
@@ -218,4 +219,61 @@ def test_KeepLatestVersionNFilesInFolderRegexFail():
         1, "[^\\d][\\._]((\\d+\\.)+\\d+)"
     ).filter(artifacts)
     expected = []
+    assert makeas(remove_these, expected) == expected
+
+def test_KeepFoldersContainingFile():
+    data = [
+        {
+            "path": "folder1",
+            "name": "0.0.1.zip",
+        },
+        {
+            "path": "folder1",
+            "name": ".retain",
+        },
+        {
+            "path": "folder1/sub",
+            "name": "0.0.2.zip",
+        },
+    ]
+
+    artifacts = ArtifactsList.from_response(data)
+
+    remove_these = KeepFoldersContainingFile(".retain").filter(artifacts)
+    expected = []
+    assert makeas(remove_these, expected) == expected
+
+def test_KeepFoldersContainingFileRemoveParentAndSibling():
+    data = [
+        {
+            "path": "parent",
+            "name": "0.0.1.zip",
+        },
+        {
+            "path": "parent/folder1",
+            "name": "0.0.2.zip",
+        },
+        {
+            "path": "parent/folder1",
+            "name": ".retain",
+        },
+        {
+            "path": "parent/folder2",
+            "name": "0.0.3.zip",
+        },
+    ]
+
+    artifacts = ArtifactsList.from_response(data)
+
+    remove_these = KeepFoldersContainingFile(".retain").filter(artifacts)
+    expected = [
+        {
+            "path": "parent",
+            "name": "0.0.1.zip",
+        },
+        {
+            "path": "parent/folder2",
+            "name": "0.0.3.zip",
+        },
+    ]
     assert makeas(remove_these, expected) == expected

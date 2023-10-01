@@ -271,6 +271,13 @@ policies:
   count: 1
 ```
 
+- `KeepFoldersContainingFile` - Leaves folders that contain a file by the specified name.
+
+```yaml
+- rule: KeepFoldersContainingFile
+  filename: ".retain"
+```
+
 ## Docker
 
 - `DeleteDockerImagesOlderThan` - Delete docker images that are older than N days

@@ -190,3 +190,26 @@ class KeepLatestVersionNFilesInFolder(Rule):
             artifacts.keep(good_artifacts)
 
         return artifacts
+
+class KeepFoldersContainingFile(Rule):
+    """Leaves folders that contain a file by the specified name."""
+
+    def __init__(self, filename):
+        self.filename = filename
+
+    def filter(self, artifacts):
+        artifacts_by_path = defaultdict(list)
+        whitelisted = []
+
+        for artifact in artifacts:
+            path = artifact["path"]
+            artifacts_by_path[path].append(artifact)
+            if artifact["name"] == self.filename:
+                whitelisted.append(artifact["path"])
+
+        for path, _artifacts in artifacts_by_path.items():
+            for whitelist in whitelisted:
+                if path.startswith(whitelist):
+                    artifacts.keep(_artifacts)
+
+        return artifacts
