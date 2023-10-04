@@ -192,10 +192,40 @@ class KeepLatestVersionNFilesInFolder(Rule):
         return artifacts
 
 class KeepFoldersContainingFile(Rule):
-    """Leaves folders that contain a file by the specified name."""
+    """
+    Leaves folders that contain a file by the specified name.
+
+    This rule inserts an AQL filter to ensure that the retain file is included
+    in results, even if it does not fit other filters.
+
+    The ordering is important:
+    - An AQL filter (def aql_add_filter) that could hide a retain marker file
+      while still returning other folder content, such as DeleteOlderThan where
+      the retain file is younger than the folder content, *must* be placed
+      before KeepFoldersContainingFile.
+    - An AQL filter (def aql_add_filter) that would affect the entire retained
+      folder evenly, such as Repo, or ExcludePath on a folder, *should* be
+      placed after KeepFoldersContainingFile.
+    - A client-side (def filter) filter that could remove the retain file as a
+      deletion candidate *must* be placed after KeepFoldersContainingFile.
+    """
 
     def __init__(self, filename):
         self.filename = filename
+
+    def aql_add_filter(self, filters):
+        # Ensure that the marker file is not excluded
+        if len(filters) == 0:
+            return []
+        elif len(filters) == 1:
+            _filter = filters[0]
+        elif len(filters) > 1:
+            _filter = {"$and": filters}
+
+        return [{"$or": [
+            _filter,
+            {"name": {"$match": self.filename}}
+        ]}]
 
     def filter(self, artifacts):
         artifacts_by_path = defaultdict(list)

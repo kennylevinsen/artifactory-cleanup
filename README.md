@@ -271,7 +271,7 @@ policies:
   count: 1
 ```
 
-- `KeepFoldersContainingFile` - Leaves folders that contain a file by the specified name.
+- `KeepFoldersContainingFile` - Leaves folders that contain a file by the specified name. This rule should be immediately before Repo and Keep rules, and after all other rules.
 
 ```yaml
 - rule: KeepFoldersContainingFile

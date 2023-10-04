@@ -4,8 +4,13 @@ from artifactory_cleanup.rules import (
     KeepLatestNFilesInFolder,
     KeepLatestVersionNFilesInFolder,
     KeepFoldersContainingFile,
+    DeleteOlderThan,
+    DeleteWithoutDownloads,
+    Repo,
 )
 from tests.utils import makeas
+
+from datetime import timedelta, date
 
 
 def test_KeepLatestNFiles():
@@ -277,3 +282,70 @@ def test_KeepFoldersContainingFileRemoveParentAndSibling():
         },
     ]
     assert makeas(remove_these, expected) == expected
+
+
+def test_KeepFoldersContainingFileFilter():
+    rules = [
+        DeleteOlderThan(days=7),
+        KeepFoldersContainingFile(".retain"),
+        Repo("repo"),
+    ]
+
+    filters = []
+    today = date(2023, 9, 27)
+    for rule in rules:
+        rule.init("session", today)
+        filters = rule.aql_add_filter(filters)
+
+    assert filters == [
+        {
+            "$or": [
+                {"created": {"$lt": "2023-09-20"}},
+                {"name": {"$match": ".retain"}},
+            ],
+        },
+        {"repo": {"$eq": "repo"}},
+    ]
+
+def test_KeepFoldersContainingFileFilterMoreRules():
+    rules = [
+        DeleteWithoutDownloads(),
+        DeleteOlderThan(days=7),
+        KeepFoldersContainingFile(".retain"),
+        Repo("repo"),
+    ]
+
+    filters = []
+    today = date(2023, 9, 27)
+    for rule in rules:
+        rule.init("session", today)
+        filters = rule.aql_add_filter(filters)
+
+    assert filters == [
+        {
+            "$or": [
+                {"$and": [
+                    {"stat.downloads": {"$eq": None}},
+                    {"created": {"$lt": "2023-09-20"}}
+                ]},
+                {"name": {"$match": ".retain"}},
+            ],
+        },
+        {"repo": {"$eq": "repo"}},
+    ]
+
+def test_KeepFoldersContainingFileFilterNoRules():
+    rules = [
+        KeepFoldersContainingFile(".retain"),
+        Repo("repo"),
+    ]
+
+    filters = []
+    today = date(2023, 9, 27)
+    for rule in rules:
+        rule.init("session", today)
+        filters = rule.aql_add_filter(filters)
+
+    assert filters == [
+        {"repo": {"$eq": "repo"}},
+    ]
